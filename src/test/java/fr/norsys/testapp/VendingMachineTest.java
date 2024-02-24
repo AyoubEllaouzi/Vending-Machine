@@ -58,6 +58,26 @@ public class VendingMachineTest {
         assertEquals(expected, result);
     }
 
+    @Test
+    public void shouldAddCoinsToStock() {
+        vendingMachine = new VendingMachine();
+        Map<Coin, Integer> expected = new HashMap<>();
+        expected.put(Coin.FIVE, 4);
+        expected.put(Coin.TWO, 3);
+        expected.put(Coin.TEN, 7);
+        expected.put(Coin.ONE, 0);
+
+        //vendingMachine.setStockCoins(Coin.TEN, 2);
+        vendingMachine.setStockCoins(Coin.FIVE, 2);
+        vendingMachine.setStockCoins(Coin.TWO, 3);
+        Map<Coin, Integer> coins = vendingMachine.getInputCoins();
+        Map<Coin, Integer> result = vendingMachine.getStockCoins();
+
+        System.out.println("Stock before buying : "+result);
+        vendingMachine.buyProduct(Product.TWIX,coins);
+        System.out.println("Stock after buying : "+vendingMachine.getStockCoins());
+        assertEquals(expected, result);
+    }
 
 
     @Test
@@ -73,8 +93,8 @@ public class VendingMachineTest {
         vendingMachine.setStockCoins(Coin.FIVE, 2);
         vendingMachine.setStockCoins(Coin.TWO, 3);
         Map<Coin, Integer> coins = vendingMachine.getInputCoins();
-        Map<Product, Integer> result = vendingMachine.gatProducts();
-        //Products before : {WATER=6, TWIX=4, COCA=5, BUENO=0}        Map<Coin, Integer> coins = vendingMachine.gatInputCoins();
+        Map<Product, Integer> result = vendingMachine.getProducts();
+        //Products before : {WATER=6, TWIX=4, COCA=5, BUENO=0}
         vendingMachine.buyProduct(Product.TWIX,coins);
 
         //Products after : {WATER=6, TWIX=3, COCA=5, BUENO=0}
@@ -101,7 +121,7 @@ public class VendingMachineTest {
     public void shouldResetOperation() {
         vendingMachine = new VendingMachine();
         Map<Product, Integer> expected = new HashMap<>();
-        Map<Product, Integer> products = vendingMachine.gatProducts();
+        Map<Product, Integer> products = vendingMachine.getProducts();
         expected.put(Product.COCA, 0);
         expected.put(Product.WATER, 0);
         expected.put(Product.TWIX, 0);
