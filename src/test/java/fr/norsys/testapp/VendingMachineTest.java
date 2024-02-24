@@ -5,82 +5,110 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class VendingMachineTest {
     VendingMachine vendingMachine;
 
- /*   @Test
-    public void shouldCheckIfProductNotExistInStock() {
+    @Test
+    void testBuyProductWithInsufficientCoins() {
         vendingMachine = new VendingMachine();
-        assertThrows(IllegalArgumentException.class, () -> vendingMachine.buyProduct(Product.BUENO, Coin.TWO),
-                "Product WATER is not available.");
+        Map<Coin, Integer> payment = new HashMap<>();
+        payment.put(Coin.ONE, 2);//2<10
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> vendingMachine.buyProduct(Product.TWIX, payment));
+        assertEquals("Insufficient Coins for the transaction :(", exception.getMessage());
     }
 
     @Test
-    public void shouldCheckIfCoinNotExistInStock() {
+    void testBuyProductWithInsufficientCoinsInStock() {
         vendingMachine = new VendingMachine();
-        assertThrows(IllegalArgumentException.class, () -> vendingMachine.buyProduct(Product.BUENO, Coin.ONE),
-                "Coin TEN is not available.");
-    }*/
-
+        Map<Coin, Integer> payment = new HashMap<>();
+        payment.put(Coin.TEN, 10); //100>90
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> vendingMachine.buyProduct(Product.TWIX, payment));
+        assertEquals("Insufficient Coins in the machine for the transaction :(", exception.getMessage());
+    }
 
     @Test
-    public void shouldReturnCoinsInsert() {
+    public void shouldNotBuyProductFromStock() {
         vendingMachine = new VendingMachine();
-        int expectedTwoCoins = 3;
-        int expectedOneCoins = 2;
+        Map<Coin, Integer> expected = new HashMap<>();
+        expected.put(Coin.TWO, 1); // Assuming the expected quantity of Coin.TWO after the transaction
 
-        vendingMachine.setCoins(Coin.TWO, 3);
-        vendingMachine.setCoins(Coin.ONE, 2);
+        vendingMachine.setStockCoins(Coin.TWO, 1);
+        vendingMachine.setStockCoins(Coin.FIVE, 1);
+        Map<Coin, Integer> coins = vendingMachine.getInputCoins();
 
-        Map<Coin, Integer> result = vendingMachine.gatCoins();
-        System.out.println(result);
-        assertEquals(expectedTwoCoins, result.get(Coin.TWO));
-        assertEquals(expectedOneCoins, result.get(Coin.ONE));
-    }
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> vendingMachine.buyProduct(Product.TWIX, coins));
+        assertEquals("Insufficient Coins for the transaction :(", exception.getMessage());    }
 
     @Test
     public void shouldBuyProductFromStock() {
         vendingMachine = new VendingMachine();
-        int expectedTwoCoins = 3;
-        int expectedOneCoins = 2;
+        Map<Coin, Integer> expected = new HashMap<>();
+        expected.put(Coin.FIVE, 2);
+        expected.put(Coin.TWO, 3);
+        expected.put(Coin.TEN, 1);
 
-        vendingMachine.setCoins(Coin.TWO, 3);
-        vendingMachine.setCoins(Coin.ONE, 2);
-        Map<Coin, Integer> coins = vendingMachine.gatCoins();
-        vendingMachine.buyProduct(Product.WATER,coins);
-        System.out.println(coins);
-        assertEquals(expectedTwoCoins, coins.get(Coin.TWO));
-        assertEquals(expectedOneCoins, coins.get(Coin.ONE));
+        vendingMachine.setStockCoins(Coin.TEN, 2);
+        vendingMachine.setStockCoins(Coin.FIVE, 2);
+        vendingMachine.setStockCoins(Coin.TWO, 3);
+        Map<Coin, Integer> coins = vendingMachine.getInputCoins();
+        Map<Coin, Integer> result  = vendingMachine.buyProduct(Product.TWIX,coins);
+        System.out.println(result);
+        assertEquals(expected, result);
+    }
+
+
+
+    @Test
+    public void shouldUpdateQuantityOfProduct() {
+        vendingMachine = new VendingMachine();
+        Map<Product, Integer> expected = new HashMap<>();
+        expected.put(Product.COCA, 5);
+        expected.put(Product.WATER, 6);
+        expected.put(Product.TWIX, 3);
+        expected.put(Product.BUENO, 0);
+
+        vendingMachine.setStockCoins(Coin.TEN, 2);
+        vendingMachine.setStockCoins(Coin.FIVE, 2);
+        vendingMachine.setStockCoins(Coin.TWO, 3);
+        Map<Coin, Integer> coins = vendingMachine.getInputCoins();
+        Map<Product, Integer> result = vendingMachine.gatProducts();
+        //Products before : {WATER=6, TWIX=4, COCA=5, BUENO=0}        Map<Coin, Integer> coins = vendingMachine.gatInputCoins();
+        vendingMachine.buyProduct(Product.TWIX,coins);
+
+        //Products after : {WATER=6, TWIX=3, COCA=5, BUENO=0}
+        System.out.println(result);
+        assertEquals(expected, result);
     }
 
     @Test
-    public void shouldBuyProductAndUpdateCoinStock() {
+    public void shouldCancelRequest() {
         vendingMachine = new VendingMachine();
-        int expected = 3;
-        // Set up the vending machine with initial coin stock
-        Map<Coin, Integer> initialCoinStock = vendingMachine.gatCoins();
-        if (initialCoinStock == null) {
-            // Handle case where gatCoins() returns null
-            initialCoinStock = new HashMap<>();
-        }
-
-        // Set up the price of the product
-        Map<Coin, Integer> price = new HashMap<>();
-        price.put(Coin.FIVE, 2); // Total price: 2 dirhams
-
-        // Buy the product
-        Map<Coin, Integer> remainingCoins = vendingMachine.buyProduct(Product.WATER, price);
-        System.out.println(remainingCoins);
-        System.out.println(vendingMachine.gatStockCoins());
-
-        // Verify that the product was bought and coin stock was updated
-        assertEquals(expected, remainingCoins.getOrDefault(Coin.TWO, 0));
+        Map<Coin, Integer> expected = new HashMap<>();
+        expected.put(Coin.FIVE, 2);
+        expected.put(Coin.TWO, 3);
+        expected.put(Coin.TEN, 2);
+        vendingMachine.setStockCoins(Coin.TEN, 2);
+        vendingMachine.setStockCoins(Coin.FIVE, 2);
+        vendingMachine.setStockCoins(Coin.TWO, 3);
+        Map<Coin, Integer> result  = vendingMachine.cancelRequest();
+        System.out.println(result);
+        assertEquals(expected, result);
     }
 
-
-
-
+    @Test
+    public void shouldResetOperation() {
+        vendingMachine = new VendingMachine();
+        Map<Product, Integer> expected = new HashMap<>();
+        Map<Product, Integer> products = vendingMachine.gatProducts();
+        expected.put(Product.COCA, 0);
+        expected.put(Product.WATER, 0);
+        expected.put(Product.TWIX, 0);
+        expected.put(Product.BUENO, 0);
+        System.out.println(products);
+        Map<Product, Integer> result  = vendingMachine.resetOperation();
+        System.out.println(products);
+        assertEquals(expected, result);
+    }
 }

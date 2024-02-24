@@ -3,9 +3,10 @@ package fr.norsys.testapp;
 import java.util.*;
 
 public class VendingMachine {
-    private Map<Product, Integer> products = new HashMap<>();
-    private Map<Coin, Integer> coinsStock = new HashMap<>();
-    private Map<Coin, Integer> coins = new HashMap<>(); // Initialize the coins map
+    private final Map<Product, Integer> products = new HashMap<>();
+    private final Map<Coin, Integer> stockCoins = new HashMap<>();
+    private final Map<Coin, Integer> inputCoins = new HashMap<>();
+    private final Map<Coin, Integer> exchangeCoins = new HashMap<>();
 
     public VendingMachine() {
         //put products
@@ -13,112 +14,69 @@ public class VendingMachine {
         products.put(Product.WATER, 6);
         products.put(Product.TWIX, 4);
         products.put(Product.BUENO, 0);
-        //put coins
-        coinsStock.put(Coin.ONE, 0);
-        coinsStock.put(Coin.TWO, 3);
-        coinsStock.put(Coin.FIVE, 2);
-        coinsStock.put(Coin.TEN, 7);
-        System.out.println("coin stock "+coinsStock);
-        System.out.println("coin entry "+coins);
+        //put inputCoins
+        stockCoins.put(Coin.ONE, 0);
+        stockCoins.put(Coin.TWO, 3);
+        stockCoins.put(Coin.FIVE, 2);
+        stockCoins.put(Coin.TEN, 7);
     }
 
     public Map<Coin, Integer> buyProduct(Product product, Map<Coin, Integer> price) {
         if (products.containsKey(product) && products.get(product) > 0) {
+            // Check if the machine has sufficient inputCoins for the transaction
+            int totalPriceFromClient = sumCoins(price);
+            int totalPriceFromStock = sumCoins(stockCoins);
+            int rest = totalPriceFromClient - product.getPrice();
+            boolean check = true; //check if I can get exchange from machine or not
 
-            // Check if the machine has sufficient coins for the transaction
-            int totalPrice = sumCoins(price);
-            if (totalPrice > sumCoins(coinsStock)) {
-                throw new IllegalArgumentException("Insufficient coins in the machine for the transaction.");
+            if(totalPriceFromClient>totalPriceFromStock){
+                throw new IllegalArgumentException("Insufficient Coins in the machine for the transaction :(");
             }
-
-            // Update the stock of products
+           // decrement quantity from products
             products.put(product, products.get(product) - 1);
+            System.out.println("Products after : "+products);
 
-            // Update the stock of coins in the machine
-            for (Map.Entry<Coin, Integer> entry : price.entrySet()) {
-                Coin coin = entry.getKey();
-                int requiredQuantity = entry.getValue();
-                int remainingStock = coinsStock.get(coin) - requiredQuantity;
-                coinsStock.put(coin, remainingStock);
-                System.out.println("coins before 1 "+coins);
-                coins.put(coin, coins.getOrDefault(coin, 0) + requiredQuantity); // Update the coins map
-                System.out.println("coins after 2 "+coins);
+            while (check) {
+                boolean coinAdded = false; // Flag to track if a coin has been added for change
+                for (Coin coin : Coin.values()) { // Iterate over coins in descending order
+                    if (rest >= coin.getValue() && stockCoins.get(coin) > 0) {
+                        exchangeCoins.put(coin, exchangeCoins.getOrDefault(coin, 0) + 1);
+                        rest -= coin.getValue();
+                        stockCoins.put(coin, stockCoins.get(coin) - 1); // Decrement stock
+                        coinAdded = true;
+                        break;
+                    }
+                }
+                if (!coinAdded) {
+                    check = false; // If no suitable coin found, exit the loop
+                }
             }
 
-            // Calculate and return the change
-            int changeAmount = sumCoins(price) - totalPrice;
-            System.out.println("Calculate price entry "+sumCoins(price));
-            System.out.println("Calculate price should return "+totalPrice);
-            System.out.println("Calculate price in stock "+sumCoins(coinsStock));
-            System.out.println("Calculate and return the change "+changeAmount);
-            Map<Coin, Integer> change = calculateChange(changeAmount);
-            updateCoinsStock(change); // Update the coins stock with the change returned
-            System.out.println("coin stock "+coinsStock);
-            System.out.println("coin entry "+coins);
-            // Return the remaining coins in the machine
-            return coinsStock;
+            if(rest ==0 ){
+                System.out.println("exchange Coins : " + exchangeCoins);
+                return exchangeCoins;
+            }else{
+                // The inputCoins does not exist or Insufficient Coins
+                System.out.println("------- "+exchangeCoins);
+                throw new IllegalArgumentException("Insufficient Coins for the transaction :(");
+            }
         } else {
             // The product does not exist or is out of stock
             throw new IllegalArgumentException("Product " + product + " is not available.");
         }
     }
 
-    private Map<Coin, Integer> calculateChange(int amount) {
-        Map<Coin, Integer> change = new HashMap<>();
-        int remainingAmount = amount;
-
-        // Sort the coins by their denomination (descending order)
-        List<Coin> sortedCoins = new ArrayList<>(coinsStock.keySet());
-        sortedCoins.sort(Comparator.comparing(Coin::getValue).reversed());
-
-        // Iterate through the sorted coins and calculate the change
-        for (Coin coin : sortedCoins) {
-            int coinValue = coin.getValue();
-            int availableQuantity = coinsStock.getOrDefault(coin, 0);
-
-            int numCoinsToUse = Math.min(remainingAmount / coinValue, availableQuantity);
-            if (numCoinsToUse > 0) {
-                change.put(coin, numCoinsToUse);
-                remainingAmount -= numCoinsToUse * coinValue;
-            }
-
-            if (remainingAmount == 0) {
-                break;
-            }
-        }
-
-        if (remainingAmount > 0) {
-            throw new IllegalArgumentException("Cannot make exact change.");
-        }
-
-        return change;
+    public void setStockCoins(Coin coin,int number) {
+        this.inputCoins.put(coin, number);
     }
 
-    private void updateCoinsStock(Map<Coin, Integer> change) {
-        for (Map.Entry<Coin, Integer> entry : change.entrySet()) {
-            Coin coin = entry.getKey();
-            int quantity = entry.getValue();
-            coinsStock.put(coin, coinsStock.get(coin) + quantity);
-            coins.put(coin, coins.get(coin) - quantity); // Deduct the change from the coins map
-        }
+    public Map<Coin, Integer> getInputCoins() {
+        return inputCoins;
     }
 
-
-
-    public void setCoins(Coin coin,int number) {
-        this.coins.put(coin, number);
+    public Map<Product, Integer> gatProducts() {
+        return products;
     }
-
-    public Map<Coin, Integer> gatCoins() {
-        System.out.println(coins);
-        return coins;
-    }
-
-    public Map<Coin, Integer> gatStockCoins() {
-        System.out.println(coinsStock);
-        return coinsStock;
-    }
-
 
     private int sumCoins(Map<Coin, Integer> price) {
         int sum = 0;
@@ -130,6 +88,21 @@ public class VendingMachine {
         return sum;
     }
 
+    public Map<Coin, Integer> cancelRequest() {
+        // Return inserted coins as refund
+        // Reset input coins
+        return inputCoins;
+    }
+
+    public Map<Product, Integer> resetOperation() {
+        // Reset input coins, exchange coins, and product quantities
+        inputCoins.clear();
+        exchangeCoins.clear();
+        for (Product product : products.keySet()) {
+            products.put(product, 0);
+        }
+        return products;
+    }
 
 
 }
